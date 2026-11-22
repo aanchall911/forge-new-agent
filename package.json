@@ -1,0 +1,63 @@
+{
+  "name": "forge-agent",
+  "displayName": "Forge Agent (TrueForge)",
+  "description": "Editor-native coding agent whose loop runs on TrueForge. Inline edit, agent mode, context assembly, per-hunk review.",
+  "version": "0.1.0",
+  "publisher": "forge-a-thon",
+  "license": "MIT",
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["AI", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "forge.inlineEdit", "title": "Forge: Inline Edit Selection" },
+      { "command": "forge.openAgent", "title": "Forge: Open Agent Panel" },
+      { "command": "forge.cancel", "title": "Forge: Cancel Running Task" },
+      { "command": "forge.undoRun", "title": "Forge: Undo All Changes From Last Run" },
+      { "command": "forge.undoLast", "title": "Forge: Undo Last Applied Change" },
+      { "command": "forge.setup", "title": "Forge: Connect to TrueForge" },
+      { "command": "forge.review.toggleHunk", "title": "Forge: Toggle Hunk" },
+      { "command": "forge.review.apply", "title": "Forge: Apply Accepted Hunks" },
+      { "command": "forge.review.discard", "title": "Forge: Reject All Hunks" }
+    ],
+    "keybindings": [
+      { "command": "forge.inlineEdit", "key": "ctrl+alt+k", "mac": "cmd+alt+k", "when": "editorHasSelection" },
+      { "command": "forge.cancel", "key": "ctrl+alt+c", "mac": "cmd+alt+c" }
+    ],
+    "viewsContainers": {
+      "activitybar": [{ "id": "forge", "title": "Forge", "icon": "media/icon.svg" }]
+    },
+    "views": {
+      "forge": [{ "type": "webview", "id": "forge.agentView", "name": "Agent" }]
+    },
+    "configuration": {
+      "title": "Forge Agent",
+      "properties": {
+        "forge.trueforge.baseUrl": { "type": "string", "default": "http://localhost:8790", "description": "URL of the local TrueForge server (npx @truefoundry/trueforge)." },
+        "forge.models": { "type": "array", "items": { "type": "string" }, "default": ["anthropic/claude-sonnet-4-6"], "description": "TrueForge model FQNs (provider/model). First is primary; the rest are automatic fallbacks, in order." },
+        "forge.contextBudgetTokens": { "type": "number", "default": 6000, "description": "Token budget for each automatic retrieval call." },
+        "forge.iterationLimit": { "type": "number", "default": 60, "description": "Max agent-loop iterations per turn." },
+        "forge.mcpPort": { "type": "number", "default": 0, "description": "Port for the extension's local MCP server (0 = random)." }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "esbuild test/hunks.test.ts --bundle --platform=node --format=cjs --outfile=test/h.js --log-level=error && node test/h.js",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "@truefoundry/trueforge-sdk": "0.185.0",
+    "diff": "^8.0.0",
+    "zod": "^3.23.8"
+  }
+}

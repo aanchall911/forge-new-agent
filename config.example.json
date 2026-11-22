@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy these keys into your VS Code settings.json. NO API keys belong here: provider keys are entered in TrueForge (Settings -> Models), never in the extension.",
+  "forge.trueforge.baseUrl": "http://localhost:8790",
+  "forge.models": [
+    "anthropic/claude-sonnet-4-6",
+    "openai/gpt-4o"
+  ],
+  "forge.contextBudgetTokens": 6000,
+  "forge.iterationLimit": 60
+}
