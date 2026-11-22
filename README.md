@@ -1,11 +1,14 @@
 # Forge Agent — VS Code coding agent on TrueForge
 
+**Team: Astracoders**
+
 ## 1. Team
 
 | Name | Role | GitHub |
 |---|---|---|
 | *(your name)* | *(your role)* | *(your handle)* |
 
+Team name: **Astracoders**  
 College / employer: *(fill in)*
 
 ## 2. Starting point
