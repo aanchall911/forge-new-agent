@@ -12,6 +12,8 @@
 Team name: **Astracoders**  
 College / employer: Navrachana University
 
+> **Note:** Demo video not yet recorded. Video timestamps in Section 6 will be updated after recording.
+
 ## 2. Starting point
 
 Built **from scratch** — no upstream fork, no upstream agent loop.  
@@ -82,14 +84,14 @@ The agent sees which files were chosen and why (matched tokens + score) in every
 
 | Criterion | Claim | Video timestamp |
 |---|---|---|
-| A1 Inline edit | Diff rendered with per-hunk accept/reject via CodeLens | 0:00 |
-| A2 Agent mode | Discovers and edits ≥3 files unprompted (Task B) | 1:10 |
-| A3 Streaming + cancellation | Tokens stream live; cancel leaves workspace consistent | 3:20 |
-| B1 Context assembly | BM25 retrieval with token budget; files chosen + why shown in session | 1:10 |
-| B2 Diff safety | Per-hunk review; undo via "Forge: Undo All Changes From Last Run" | 0:30 |
-| B3 Resilience | Automatic fallback to second model; workspace unchanged on all-fail | 3:20 |
-| B4 TrueForge integration | Tool approval drives review; deferred loading + subagents + compaction | 1:10 |
-| C1 Video | All three tasks complete, legible, verified on screen | — |
+| A1 Inline edit | Diff rendered with per-hunk accept/reject via CodeLens | *(TBD)* |
+| A2 Agent mode | Discovers and edits ≥3 files unprompted (Task B) | *(TBD)* |
+| A3 Streaming + cancellation | Tokens stream live; cancel leaves workspace consistent | *(TBD)* |
+| B1 Context assembly | BM25 retrieval with token budget; files chosen + why shown in session | *(TBD)* |
+| B2 Diff safety | Per-hunk review; undo via "Forge: Undo All Changes From Last Run" | *(TBD)* |
+| B3 Resilience | Automatic fallback to second model; workspace unchanged on all-fail | *(TBD)* |
+| B4 TrueForge integration | Tool approval drives review; deferred loading + subagents + compaction | *(TBD)* |
+| C1 Video | All three tasks complete, legible, verified on screen | *(TBD)* |
 | C2 Write-up | Architecture, context strategy, model setup, trade-offs, scorecard, limitations | — |
 
 ## 7. Tools used
