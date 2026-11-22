@@ -6,7 +6,7 @@
 
 | Name | Role | GitHub |
 |---|---|---|
-| Aanchal Bhatt | Team Leader | *(your handle)* |
+| Aanchal Bhatt | Team Leader | aanchall911 |
 | Krishii Patel | *(your role)* | *(your handle)* |
 
 Team name: **Astracoders**  
