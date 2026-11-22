@@ -7,7 +7,7 @@
 | Name | Role | GitHub |
 |---|---|---|
 | Aanchal Bhatt | Team Leader | aanchall911 |
-| Krishii Patel | *(your role)* | *(your handle)* |
+| Krishii Patel | Team Member | — |
 
 Team name: **Astracoders**  
 College / employer: Navrachana University
