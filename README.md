@@ -10,7 +10,7 @@
 | Krishii Patel | *(your role)* | *(your handle)* |
 
 Team name: **Astracoders**  
-College / employer: *(fill in)*
+College / employer: Navrachana University
 
 ## 2. Starting point
 
