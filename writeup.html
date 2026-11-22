@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Forge Agent — Write-up — Astracoders</title>
+<style>
+  @page { size: A4; margin: 18mm 18mm 18mm 18mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10.5pt; color: #111; line-height: 1.55; }
+  h1 { font-size: 17pt; font-weight: 700; margin-bottom: 2pt; }
+  .subtitle { font-size: 10pt; color: #555; margin-bottom: 10pt; }
+  h2 { font-size: 12pt; font-weight: 700; margin-top: 14pt; margin-bottom: 4pt; border-bottom: 1.5px solid #333; padding-bottom: 2pt; }
+  h3 { font-size: 10.5pt; font-weight: 700; margin-top: 8pt; margin-bottom: 2pt; }
+  p { margin-bottom: 5pt; }
+  ul, ol { margin-left: 18pt; margin-bottom: 5pt; }
+  li { margin-bottom: 2pt; }
+  code { font-family: 'Consolas', 'Courier New', monospace; font-size: 9pt; background: #f3f3f3; padding: 0 3pt; border-radius: 2px; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 6pt; font-size: 9.5pt; }
+  th { background: #222; color: #fff; padding: 4pt 6pt; text-align: left; }
+  td { border: 1px solid #ccc; padding: 3pt 6pt; vertical-align: top; }
+  tr:nth-child(even) td { background: #f9f9f9; }
+  .note { background: #fff8e1; border-left: 3px solid #f0a500; padding: 4pt 8pt; margin-bottom: 6pt; font-size: 9.5pt; }
+  .section { margin-bottom: 4pt; }
+  @media print {
+    body { font-size: 10pt; }
+    h2 { page-break-after: avoid; }
+    table { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Forge Agent — VS Code Coding Agent on TrueForge</h1>
+<div class="subtitle">TrueFoundry Forge-a-thon · Techfest 2026–27 · Write-up</div>
+
+<!-- ─── 1. TEAM ─────────────────────────────────────────────────────────── -->
+<h2>1. Team</h2>
+<table>
+  <tr><th>Name</th><th>Role</th><th>GitHub</th></tr>
+  <tr><td>Aanchal Bhatt</td><td>Team Leader</td><td><em>(handle)</em></td></tr>
+  <tr><td>Krishii Patel</td><td><em>(role)</em></td><td><em>(handle)</em></td></tr>
+</table>
+<p><strong>Team name:</strong> Astracoders &nbsp;|&nbsp; <strong>College:</strong> Navrachana University</p>
+
+<!-- ─── 2. STARTING POINT ──────────────────────────────────────────────── -->
+<h2>2. Starting Point</h2>
+<p>Built <strong>from scratch</strong> — no upstream fork, no upstream agent loop. Editor plumbing (diff view, CodeLens, webview) uses plain VS Code API only. No upstream repository or commit to declare.</p>
+
+<!-- ─── 3. ARCHITECTURE ───────────────────────────────────────────────── -->
+<h2>3. Architecture on TrueForge</h2>
+<p>The extension is a <strong>client</strong> of TrueForge. It never calls a model provider directly.</p>
+
+<h3>Session flow</h3>
+<ol>
+  <li>On <em>"Forge: Connect to TrueForge"</em>, the extension starts a localhost MCP HTTP server (<code>src/mcp.ts</code>, bearer-token auth) and registers it in TrueForge via <code>PUT /api/v1/settings/mcp-servers</code>.</li>
+  <li><code>AgentRunner</code> (<code>src/agent.ts</code>) calls <code>sessions.create</code> with an inline agent spec (<code>agent/forge-agent.json</code>, model substituted at runtime), then <code>sessions.createTurnStream</code> to stream events.</li>
+  <li>Streamed <code>model.message.delta</code> events are forwarded token-by-token to the webview panel.</li>
+  <li>When TrueForge pauses a turn for tool approval (<code>turn.update → paused</code>), the extension opens the hunk review UI, waits for the user's per-hunk decision, then resumes via <code>sessions.createTurnEvents</code> with <code>user.tool_approval</code>.</li>
+</ol>
+
+<h3>MCP tools exposed to the agent</h3>
+<table>
+  <tr><th>Tool</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>retrieve_context</code></td><td>read-only</td><td>BM25 retrieval over the whole workspace, budgeted</td></tr>
+  <tr><td><code>find_symbol</code></td><td>read-only</td><td>Exact/prefix/substring symbol lookup</td></tr>
+  <tr><td><code>search_code</code></td><td>read-only</td><td>Regex search across workspace files</td></tr>
+  <tr><td><code>read_file</code></td><td>read-only</td><td>Line-range read (max 400 lines per call)</td></tr>
+  <tr><td><code>list_files</code></td><td>read-only</td><td>Glob file listing</td></tr>
+  <tr><td><code>propose_edit</code></td><td><strong>gated</strong></td><td>Exact-match replacement edits; requires user approval</td></tr>
+  <tr><td><code>propose_new_file</code></td><td><strong>gated</strong></td><td>New file creation; requires user approval</td></tr>
+  <tr><td><code>run_command</code></td><td><strong>gated</strong></td><td>Shell command in workspace root; requires user approval</td></tr>
+</table>
+
+<h3>Harness features used</h3>
+<ul>
+  <li><strong>Tool approval</strong> (<code>requireApprovalForTools</code>): gated tools pause the turn; the extension drives the diff review, then resumes with <code>user.tool_approval</code>.</li>
+  <li><strong>Deferred tool loading</strong> (<code>preloadTools: ["retrieve_context", "read_file", "propose_edit"]</code>): three tools always loaded; the rest discovered on demand, keeping the context window smaller.</li>
+  <li><strong>Subagents</strong> (<code>dynamicSubAgents: true</code>): the agent delegates broad file exploration to subagents so its own context stays small.</li>
+  <li><strong>Compaction</strong> (<code>compaction.trigger.value: 60000</code> input tokens): automatic context compaction on long runs.</li>
+  <li><strong><code>ask_user_question</code></strong> (<code>askUserQuestions: true</code>): the agent can ask clarifying questions via VS Code quick-pick / input box.</li>
+</ul>
+
+<!-- ─── 4. CONTEXT ────────────────────────────────────────────────────── -->
+<h2>4. How Context is Selected</h2>
+<p><code>src/context.ts</code> builds a BM25 index over symbol-aligned chunks (≤ 60 lines each, split at function/class boundaries). The index is built on extension activation and kept warm via a <code>FileSystemWatcher</code>.</p>
+
+<h3>Retrieval pipeline</h3>
+<ol>
+  <li>Tokenize query: camelCase split, stopword filter, deduplicate.</li>
+  <li>BM25 score all chunks (k1=1.5, b=0.75). Path tokens weighted ×3, symbol-name tokens ×5.</li>
+  <li>Downweight data/config files (<code>.json</code>, <code>.toml</code>, <code>static/</code>) by 0.6×.</li>
+  <li>Second pass — graph boosts around the top-5 files:
+    <ul>
+      <li>Chunks in files that import a top-5 file: ×1.15</li>
+      <li>Chunks in files imported by a top-5 file: ×1.15</li>
+      <li>Test files paired with a top-5 source file: ×1.25</li>
+    </ul>
+  </li>
+  <li>Greedy pack under token budget (default 6000 tokens, max 2 chunks per file).</li>
+  <li>Return hits with file, line range, matched tokens, score + omitted list for transparency.</li>
+</ol>
+<p><strong>Budget:</strong> configurable via <code>forge.contextBudgetTokens</code> (default 6000). <code>@file:path</code> and <code>@symbol:name</code> mentions are resolved before retrieval and counted against the same budget. The agent sees which files were chosen and why in every <code>retrieve_context</code> response, making selection visible in the TrueForge session.</p>
+
+<!-- ─── 5. MODEL SETUP ─────────────────────────────────────────────────── -->
+<h2>5. Model Setup</h2>
+<table>
+  <tr><th>Model</th><th>Where it ran</th><th>Approx. cost (Task B)</th><th>Notes</th></tr>
+  <tr><td><code>anthropic/claude-sonnet-4-6</code></td><td>Anthropic API via TrueForge</td><td>~$0.05–0.15</td><td>Primary</td></tr>
+  <tr><td><code>openai/gpt-4o</code></td><td>OpenAI API via TrueForge</td><td>~$0.05–0.10</td><td>Automatic fallback</td></tr>
+</table>
+<p><strong>How to switch models:</strong> VS Code Settings → search <code>forge.models</code> → edit the ordered list. First model is primary; the rest are automatic fallbacks tried in order with exponential backoff (1s, 2s). Auth errors (401/403) skip retries immediately.</p>
+<p><strong>Never commit API keys.</strong> Keys are entered in TrueForge at <code>http://localhost:8790/settings/models</code>. See <code>config.example.json</code> for the VS Code settings template.</p>
+
+<!-- ─── 6. SCORECARD ───────────────────────────────────────────────────── -->
+<h2>6. Scorecard</h2>
+<div class="note">Demo video not yet recorded. Video timestamps will be updated after recording.</div>
+<table>
+  <tr><th>Criterion</th><th>Claim</th><th>Video timestamp</th></tr>
+  <tr><td>A1 Inline edit</td><td>Diff rendered with per-hunk accept/reject via CodeLens</td><td><em>TBD</em></td></tr>
+  <tr><td>A2 Agent mode</td><td>Discovers and edits ≥3 files unprompted (Task B)</td><td><em>TBD</em></td></tr>
+  <tr><td>A3 Streaming + cancellation</td><td>Tokens stream live; cancel leaves workspace consistent</td><td><em>TBD</em></td></tr>
+  <tr><td>B1 Context assembly</td><td>BM25 retrieval with token budget; files chosen + why shown in session</td><td><em>TBD</em></td></tr>
+  <tr><td>B2 Diff safety</td><td>Per-hunk review; undo via "Forge: Undo All Changes From Last Run"</td><td><em>TBD</em></td></tr>
+  <tr><td>B3 Resilience</td><td>Automatic fallback to second model; workspace unchanged on all-fail</td><td><em>TBD</em></td></tr>
+  <tr><td>B4 TrueForge integration</td><td>Tool approval drives review; deferred loading + subagents + compaction</td><td><em>TBD</em></td></tr>
+  <tr><td>C1 Video</td><td>All three tasks complete, legible, and visibly verified on screen</td><td><em>TBD</em></td></tr>
+  <tr><td>C2 Write-up</td><td>Architecture, context strategy, model setup, trade-offs, scorecard, limitations</td><td>—</td></tr>
+</table>
+
+<!-- ─── 7. TOOLS USED ─────────────────────────────────────────────────── -->
+<h2>7. Tools Used</h2>
+<ul>
+  <li><strong>Amazon Q Developer</strong> (AI coding assistant) — used to scaffold and review extension code</li>
+  <li><strong>TypeScript / esbuild</strong> — build toolchain</li>
+  <li><strong>TrueForge SDK</strong> (<code>@truefoundry/trueforge-sdk</code>) — agent harness client</li>
+  <li><strong>MCP SDK</strong> (<code>@modelcontextprotocol/sdk</code>) — MCP server for editor tools</li>
+  <li><strong>diff</strong> (npm) — unified diff / hunk computation</li>
+</ul>
+
+<!-- ─── 8. LIMITATIONS ────────────────────────────────────────────────── -->
+<h2>8. Known Limitations and What We'd Do With Another Month</h2>
+<h3>Current limitations</h3>
+<ul>
+  <li>Inline edit has no retrieval step — only the selected region + 40 lines of surrounding context are sent. For cross-file inline edits this is insufficient.</li>
+  <li><code>list_files</code> throws if no workspace folder is open (TrueForge sees the error text and the agent recovers, but the UX is rough).</li>
+  <li>The BM25 index is in-memory and rebuilt on each extension host restart; a large monorepo (&gt;8000 files) will be slow to index.</li>
+  <li>No streaming progress for the hunk review — the diff editor opens only after the full proposal is received.</li>
+  <li>The webview panel is minimal HTML; no syntax highlighting in the context display.</li>
+</ul>
+<h3>With another month</h3>
+<ul>
+  <li>Add a vector embedding index (e.g. local <code>all-MiniLM</code>) alongside BM25 for semantic retrieval, with a hybrid RRF merge.</li>
+  <li>Stream proposed hunks into the diff editor as they arrive rather than waiting for the full proposal.</li>
+  <li>Add a file-tree view showing which files the agent has read/modified in the current run.</li>
+  <li>Persist the BM25 index to disk (SQLite) so restarts are instant.</li>
+  <li>Contribute the deferred-tool-loading pattern back to TrueForge as a documented example.</li>
+</ul>
+
+</body>
+</html>
