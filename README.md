@@ -6,7 +6,8 @@
 
 | Name | Role | GitHub |
 |---|---|---|
-| *(your name)* | *(your role)* | *(your handle)* |
+| Aanchal Bhatt | *(your role)* | *(your handle)* |
+| Krishii Patel | *(your role)* | *(your handle)* |
 
 Team name: **Astracoders**  
 College / employer: *(fill in)*
